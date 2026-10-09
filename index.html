@@ -129,7 +129,10 @@ textarea{width:100%;min-height:130px;border-radius:16px;border:1px solid var(--l
 .chips button[aria-pressed="true"]{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
 .field{display:block;margin:10px 0}
 .field span{display:block;font-size:14px;color:var(--muted);margin-bottom:4px}
-.field input{width:100%;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:17px}
+.field input{display:block;width:100%;min-width:0;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:17px;-webkit-appearance:none;appearance:none}
+/* iOS Safari gives date pickers an intrinsic width and centered text; make them match the other fields */
+.field input[type="datetime-local"]{height:48px;line-height:46px;text-align:left}
+.field input::-webkit-date-and-time-value{text-align:left;margin:0}
 .row{display:flex;gap:10px;margin-top:14px}
 .row button{flex:1;min-height:52px;border-radius:14px;border:1px solid var(--line);background:var(--bg);font-weight:600}
 .row .primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
@@ -521,9 +524,9 @@ function renderLog(){
   }
 
   html += `<div class="today">
-    <div><b>${feeds.length}</b><small>feeds today${lastFeed?`<br>last ${dur(now-lastFeed.t)} ago`:""}</small></div>
+    <div><b>${feeds.length}</b><small>${feeds.length===1?"feed":"feeds"} today${lastFeed?`<br>last ${dur(now-lastFeed.t)} ago`:""}</small></div>
     <div><b>${dur(sleepMs)}</b><small>sleep today</small></div>
-    <div><b>${nap.length}</b><small>nappies today<br>${wet} wet, ${dirty} dirty</small></div>
+    <div><b>${nap.length}</b><small>${nap.length===1?"nappy":"nappies"} today<br>${wet} wet, ${dirty} dirty</small></div>
   </div>`;
   if(os) html += `<p class="sleeping">Asleep since ${fmtTime(new Date(os.t))} (${dur(now-os.t)}). Tap “Woke up” when baby wakes.</p>`;
 
