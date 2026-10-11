@@ -157,8 +157,20 @@ textarea{width:100%;min-height:130px;border-radius:16px;border:1px solid var(--l
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg);font-weight:600}
 .info p{margin:8px 0}
 
+/* Cues */
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 4px}
+.jump button{min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--line);background:var(--surface);font-size:15px}
+.cue{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-top:14px;scroll-margin-top:12px}
+.cue h2{font-size:21px;margin-bottom:6px}
+.cue .help{font-size:15.5px;color:var(--muted);margin-top:10px}
+.cue .warn{font-size:15.5px;color:var(--alert);margin-top:8px}
+.mv{padding:11px 0;border-top:1px solid var(--line)}
+.mv:first-of-type{border-top:0;padding-top:4px}
+.mv p{font-size:15.5px;margin-top:2px}
+.mv .warn{margin-top:4px}
+
 /* Tab bar */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(3,1fr);
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);
   background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
 nav.tabs button{min-height:56px;border:0;background:none;color:var(--muted);font-size:16px;font-weight:600;border-radius:12px}
@@ -172,12 +184,14 @@ nav.tabs button[aria-current="page"]{color:var(--accent);background:var(--accent
 <main>
   <div id="view-week"></div>
   <div id="view-log" class="hidden"></div>
+  <div id="view-cues" class="hidden"></div>
   <div id="view-info" class="hidden"></div>
 </main>
 <nav class="tabs" aria-label="Sections">
   <button data-tab="week" aria-current="page">Weeks</button>
   <button data-tab="log">Log</button>
-  <button data-tab="info">Safety &amp; info</button>
+  <button data-tab="cues">Cues</button>
+  <button data-tab="info">Safety</button>
 </nav>
 <div id="toast" class="toast hidden" role="status"></div>
 
@@ -627,13 +641,70 @@ $("#view-info").addEventListener("click", async e => {
   }
 });
 
+/* ---------- Cues view ---------- */
+const CUES = [
+{id:"hungry", ic:"🍼", t:"Hungry",
+signs:["<strong>Early:</strong> stirring, opening mouth, turning head to search (rooting), licking or smacking lips.","<strong>Getting stronger:</strong> stretching, wriggling more, hands to mouth.","<strong>Late:</strong> crying, frantic head turning, going red."],
+help:"Offer a feed at the early signs if you can. If baby is already crying, calm them first with a cuddle or skin-to-skin, then feed."},
+{id:"full", ic:"😌", t:"Full",
+signs:["Sucking slows down or stops.","Turns away from the breast or bottle, or closes mouth.","Hands open and body relaxes.","Drifts off to sleep looking content."],
+help:"Let baby stop when they show these signs, even if the bottle isn't finished. Burp partway through and at the end."},
+{id:"tired", ic:"😴", t:"Tired",
+signs:["Yawning.","Staring off with a glazed, unfocused look.","Rubbing eyes or face, pulling at ears.","Fussing, jerky movements, turning away from you."],
+help:"Settle baby at the first signs. An overtired baby often finds it harder to fall asleep. Young babies often tire after 45–90 minutes awake, sometimes sooner."},
+{id:"break", ic:"✋", t:"Needs a break",
+signs:["Looks or turns away from you.","Arching back, squirming or pushing away.","Fingers splayed wide, or a hand held up.","Frowning or grimacing.","Hiccups, sneezes or yawns in the middle of play can also mean “that's enough”."],
+help:"Pause: quieter voice, dimmer light, hold baby close or let them look away. Try again later."},
+{id:"play", ic:"👀", t:"Ready to play",
+signs:["Bright, wide-open eyes.","Looks at your face and holds your gaze.","Calm, smooth movements, or still and focused.","Reaches toward you. Later, coos and smiles."],
+help:"A good time for face time, talking, tummy time and this week's activities."},
+{id:"wind", ic:"💨", t:"Wind or tummy discomfort",
+signs:["Squirming and straining, especially during or after feeds.","Pulling legs up to the tummy, or kicking and stiffening legs.","Grimacing or going red.","Fussing that eases after a burp or passing gas."],
+help:"Burp, hold baby upright against your shoulder, or try slow bicycle legs. Awake tummy time can help too.",
+warn:"Call your pediatrician if baby seems in pain at every feed, vomits forcefully, or has a swollen, hard tummy."}
+];
+const MOVES = [
+["Kicking legs","With a bright face and wide eyes: excited and ready to play. With a grimace or legs pulled up: often wind or tummy discomfort. Plenty of kicking is also just baby getting stronger."],
+["Hands to mouth","Often an early hunger sign. Right after a feed, it's more likely self-soothing."],
+["Arching back","Can mean overstimulated, frustrated or uncomfortable.","If it happens at most feeds along with crying or spitting up, mention it to your pediatrician."],
+["Sudden startle, arms flung out","The startle (Moro) reflex. Normal, set off by a noise or a feeling of falling. It fades over the first few months."],
+["Trembling chin, arms or legs","Common in newborns, especially when crying or startled. Gently holding the arm or leg should stop it.","Call your pediatrician if it happens when baby is calm or doesn't stop when held. Rhythmic jerking with staring or not responding may be a seizure: call 911."],
+["Grunting and going red while pooping","Normal in young babies if the poop comes out soft. They're still learning how to push."],
+["Grunting with every breath","","Grunting with every breath, very fast breathing, flaring nostrils, or skin pulling in between the ribs: call your pediatrician right away. Struggling to breathe, or blue or grey lips: call 911."],
+["Twitches, noises and uneven breathing in sleep","Normal in light (active) sleep, including short breathing pauses of under about 10 seconds.","A pause of 20 seconds or more, or blue or grey color: call 911."],
+["Hiccups and sneezes","Usually harmless. Sneezing clears baby's nose, and hiccups normally stop on their own."],
+["Eyes crossing now and then","Common in the first few months while eye muscles strengthen.","Mention it if the eyes always cross, or still cross after about 4 months."]
+];
+const CRY = ["<strong>Hungry?</strong> Check when baby last fed.","<strong>Nappy?</strong> Wet or dirty.","<strong>Tired?</strong> Look for the sleepy cues above.","<strong>Wind?</strong> Try a burp or holding upright.","<strong>Too hot or cold?</strong> Feel the back of the neck or chest. Cool hands and feet are normal.","<strong>Wants closeness?</strong> Hold, sway, shush, skin-to-skin or a walk.","<strong>Too much going on?</strong> Try a dim, quiet room."];
+
+function renderCues(){
+  const facts = arr => `<ul class="facts">${arr.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  const jumps = [...CUES.map(c=>[c.id,c.t]), ["moves","Movements"], ["cry","Crying"]];
+  $("#view-cues").innerHTML = `<header class="hero"><h1>Cues</h1>
+    <p class="range">Cues overlap, and every baby has their own. Look at the whole picture: face, hands, body, and when baby last ate or slept.</p></header>
+  <div class="jump" role="group" aria-label="Jump to">${jumps.map(([id,t])=>`<button data-jump="cue-${id}">${t}</button>`).join("")}</div>
+  ${CUES.map(c=>`<div class="cue" id="cue-${c.id}"><h2>${c.ic} ${c.t}</h2>${facts(c.signs)}<p class="help">${c.help}</p>${c.warn?`<p class="warn">${c.warn}</p>`:""}</div>`).join("")}
+  <div class="cue" id="cue-moves"><h2>🦵 What movements can mean</h2>
+    ${MOVES.map(([t,d,w])=>`<div class="mv"><span class="act-name">${t}</span>${d?`<p>${d}</p>`:""}${w?`<p class="warn">${w}</p>`:""}</div>`).join("")}</div>
+  <div class="cue" id="cue-cry"><h2>😢 Crying: what to check</h2>${facts(CRY)}
+    <p class="help">Some crying with no clear cause is normal, especially around 6–8 weeks. If you feel overwhelmed, lay baby on their back in the crib and step away for a few minutes. Never shake a baby.</p>
+    <p class="warn">A cry that sounds very different (high-pitched, weak or moaning), or crying with fever, vomiting or poor feeding: call your pediatrician.</p></div>
+  <p class="fine">General information based on CDC and AAP guidance, not medical advice. If you're unsure or worried, call your pediatrician.</p>`;
+}
+$("#view-cues").addEventListener("click", e => {
+  const b = e.target.closest("[data-jump]"); if(!b) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById(b.dataset.jump).scrollIntoView({behavior: reduce ? "auto" : "smooth"});
+});
+
 /* ---------- Tabs ---------- */
 let tab = "week";
 function showTab(t){
   tab = t;
-  ["week","log","info"].forEach(x => $("#view-"+x).classList.toggle("hidden", x!==t));
+  ["week","log","cues","info"].forEach(x => $("#view-"+x).classList.toggle("hidden", x!==t));
   document.querySelectorAll("nav.tabs button").forEach(b => b.dataset.tab===t ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
   if(t==="log") renderLog();
+  if(t==="cues") renderCues();
   if(t==="info") renderInfo();
   window.scrollTo(0,0);
 }
